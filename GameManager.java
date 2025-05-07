@@ -10,6 +10,8 @@ public class GameManager {
     private int currentIdx = 0;
     private boolean hasDrawn = false;
     private final Path turnFile;
+    private final Path stateFile;
+
 
     public GameManager(String name) throws IOException {
         gameDir = Paths.get(name);
@@ -17,6 +19,25 @@ public class GameManager {
             throw new IllegalArgumentException("Game does not exist");
         auth = new AuthManager(gameDir);
         turnFile = gameDir.resolve("turn.txt");
+        stateFile = gameDir.resolve("state.txt");
+    }
+
+    private enum State { NOT_STARTED, IN_PROGRESS, FINISHED }
+
+    private void writeState(State s) throws IOException {
+        Files.write(stateFile, Collections.singletonList(s.name()));
+    }
+
+    private State readState() throws IOException {
+        if (!Files.exists(stateFile)) return State.NOT_STARTED;
+        String txt = Files.readAllLines(stateFile).get(0).trim();
+        return State.valueOf(txt);
+    }
+
+    private void ensureCanManageUsers() throws IOException {
+        State s = readState();
+        if (s == State.IN_PROGRESS)
+            throw new IllegalStateException("You cannot modify users while the game is in progress");
     }
 
     public static void init(String game) throws IOException {
@@ -24,22 +45,27 @@ public class GameManager {
         if (Files.exists(d)) throw new IllegalArgumentException("Game already exists");
         Files.createDirectory(d);
         Files.createFile(d.resolve("users.txt"));
+        Files.write(d.resolve("state.txt"),
+            Collections.singletonList(State.NOT_STARTED.name()));
         AuthManager a = new AuthManager(d);
         a.initAdmin(System.console());
     }
 
     public void addUser(String u) throws IOException {
         auth.requireAdmin(System.console());
+        ensureCanManageUsers();
         auth.addUser(u, System.console());
     }
     public void removeUser(String u) throws IOException {
         auth.requireAdmin(System.console());
+        ensureCanManageUsers();
         auth.removeUser(u);
         Files.deleteIfExists(gameDir.resolve(u + ".txt"));
     }
 
     public void start() throws IOException {
         auth.requireAdmin(System.console());
+        writeState(State.IN_PROGRESS);
         loadPlayers();
         if (players.size() < 2) throw new IllegalStateException("Required at least 2 players");
         deck = new Deck();
@@ -90,7 +116,6 @@ public class GameManager {
     public void order(String user) throws IOException {
         auth.requireUser(user, System.console());
         loadState();
-        // Encuentra índice de “user”
         for (int i = 0; i < players.size(); i++) {
             if (players.get(i).getName().equals(user)) {
                 currentIdx = i;
@@ -121,6 +146,7 @@ public class GameManager {
 
         if (p.hasWon()) {
             System.out.println("¡" + user + " won!");
+            writeState(State.FINISHED);
             return;
         }
 
@@ -148,12 +174,17 @@ public class GameManager {
         loadState();
         Player p = players.get(currentIdx);
         if (!p.getName().equals(user)) throw new SecurityException("Not your turn");
+
+        if (hasDrawn) {
+            throw new IllegalStateException("You have already drawn this turn");
+        }
         Card c = p.draw(deck);
         deck.savePiles(gameDir);
         hasDrawn = true;
         saveTurn();   
         System.out.println("Drawn card : " + c);
         System.out.println("Hand: " + p.getHand());
+        System.out.println("Top of Discard: " + deck.topDiscard());
     }
 
     public void pass(String user) throws IOException {
@@ -162,10 +193,19 @@ public class GameManager {
         Player p = players.get(currentIdx);
         if (!p.getName().equals(user)) throw new SecurityException("Not your turn");
         if (!hasDrawn) throw new IllegalStateException("You must draw before passing");
+        Card top = deck.topDiscard();
+        boolean existeJugable = p.getHand().stream()
+            .anyMatch(card -> card.matches(top));
+        if (existeJugable) {
+            throw new IllegalStateException(
+                "You still have playable cards (" + top + "); cannot pass");
+        }
         p.pass(deck);
+        System.out.println("Top of Discard after passing: " + deck.topDiscard());
         int next = (currentIdx + 1) % players.size();
         currentIdx = next;
         hasDrawn   = false;
-        saveTurn(); 
+        saveTurn();
+        System.out.println("Next up: " + players.get(currentIdx).getName()); 
     }
 }
