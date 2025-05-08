@@ -193,14 +193,7 @@ public class GameManager {
         Player p = players.get(currentIdx);
         if (!p.getName().equals(user)) throw new SecurityException("Not your turn");
         if (!hasDrawn) throw new IllegalStateException("You must draw before passing");
-        Card top = deck.topDiscard();
-        boolean existeJugable = p.getHand().stream()
-            .anyMatch(card -> card.matches(top));
-        if (existeJugable) {
-            throw new IllegalStateException(
-                "You still have playable cards (" + top + "); cannot pass");
-        }
-        p.pass(deck);
+  
         System.out.println("Top of Discard after passing: " + deck.topDiscard());
         int next = (currentIdx + 1) % players.size();
         currentIdx = next;

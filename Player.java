@@ -6,7 +6,7 @@ public class Player {
     private final String name;
     private final Path handFile;
     private final List<Card> hand = new ArrayList<>();
-    private boolean hasDrawnThisTurn = false;
+    // private boolean hasDrawnThisTurn = false;
 
     public Player(String name, Path dir) throws IOException {
         if ("admin".equalsIgnoreCase(name)) throw new IllegalArgumentException("'admin' not allowed");
@@ -40,21 +40,16 @@ public class Player {
         if (!c.matches(deck.topDiscard())) throw new IllegalArgumentException("You can't discard that card");
         hand.remove(c); deck.play(c);
         saveHand();
-        hasDrawnThisTurn = false;
+        // hasDrawnThisTurn = false;
     }
 
     public Card draw(Deck deck) {
-        if (hasDrawnThisTurn) throw new IllegalStateException("You have already drawn this turn");
+        // if (hasDrawnThisTurn) throw new IllegalStateException("You have already drawn this turn");
         Card c = deck.draw();
         hand.add(c);
         saveHand();
-        hasDrawnThisTurn = true;
+        // hasDrawnThisTurn = true;
         return c;
-    }
-
-    public void pass(Deck deck) {
-        if (!hasDrawnThisTurn) throw new IllegalStateException("You must draw before passing");
-        hasDrawnThisTurn = false;
     }
 
     public boolean hasWon() {
