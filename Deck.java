@@ -49,7 +49,6 @@ public class Deck {
         discardPile.add(top);
     }
 
-    // Serialización a archivos
     public void savePiles(Path dir) throws IOException {
         writePile(drawPile, dir.resolve("draw.txt"));
         writePile(discardPile, dir.resolve("discard.txt"));
