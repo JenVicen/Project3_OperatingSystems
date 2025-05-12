@@ -139,20 +139,14 @@ public class GameManager {
     // Displays the turn order for the specified user
     public void order(String user) throws IOException {
         auth.requireUser(user, System.console());
-        loadState();
-        for (int i = 0; i < players.size(); i++) {
-            if (players.get(i).getName().equals(user)) {
-                currentIdx = i;
-                saveTurn();
-                break;
-            }
+        loadState();  // loads players AND currentIdx from turn.txt
+    
+        System.out.println("Turn order (next first):");
+        for (int offset = 0; offset < players.size(); offset++) {
+            String name = players.get((currentIdx + offset) % players.size()).getName();
+            System.out.println("  " + name);
         }
-        System.out.println("Turn order:");
-        for (int k = 0; k < players.size(); k++) {
-            System.out.println("  " +
-                players.get((currentIdx + k) % players.size()).getName());
-        }
-    }
+    }    
 
     // Allows a user to play a card
     public void play(String cardStr, String user) throws IOException {
